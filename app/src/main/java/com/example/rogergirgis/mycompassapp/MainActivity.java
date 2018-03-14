@@ -8,6 +8,11 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.WindowManager;
 import android.widget.TextView;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
@@ -26,6 +31,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float[] mR = new float[9];
     private float[] mOrientation = new float[3];
     private float mCurrentDegree = 0f;
+
+    private long startTime = System.currentTimeMillis();
+    private long currTime = System.currentTimeMillis();
+    private long timeOfLastUpdate = 0L;
+    private long timeSinceLastUpdate = 0L;
+    private long timeSinceStart = 0L;
+
+
+
 
     /**
      *  ;asldkjfj;asdflk;asd f
@@ -60,8 +74,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     protected void onResume() {
         super.onResume();
-        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_GAME);
-        mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_GAME);
+        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
+        mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_UI);
     }
 
     protected void onPause() {
@@ -72,6 +86,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
+        currTime = System.currentTimeMillis();
+        timeSinceStart = currTime - startTime;
+        timeSinceLastUpdate = currTime - timeOfLastUpdate;
+
         if (sensorEvent.sensor == mAccelerometer) {
             xAccelText.setText("X:" + sensorEvent.values[0]);
             yAccelText.setText("Y:" + sensorEvent.values[1]);
@@ -99,6 +117,37 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             yOrientationText.setText("Y: " + yOrientationDeg);
             zOrientationText.setText("Z: " + zOrientationDeg);
         }
+        if ((timeSinceLastUpdate < 200) && mLastAccelerometerSet && mLastMagnetometerSet) {
+            SensorManager.getRotationMatrix(mR, null, mLastAccelerometer, mLastMagnetometer);
+            SensorManager.getOrientation(mR, mOrientation);
+            timeOfLastUpdate = currTime;
+
+
+            String xOrientationDeg = String.valueOf(convertToDegrees(mOrientation[0]));
+            String yOrientationDeg = String.valueOf(convertToDegrees(mOrientation[1]));
+            String zOrientationDeg = String.valueOf(convertToDegrees(mOrientation[2]));
+
+            try {
+                FileWriter fw = new FileWriter("...",true);
+                fw.append(String.valueOf(timeSinceStart));
+                fw.append(",");
+                fw.append(xOrientationDeg);
+                fw.append(",");
+                fw.append(yOrientationDeg);
+                fw.append(",");
+                fw.append(zOrientationDeg);
+                fw.append("\n");
+                fw.close();
+                fw.flush();
+            }
+            catch(IOException e){
+                e.printStackTrace();
+            }
+
+
+
+        }
+
     }
 
     public float convertToDegrees(float rad) {
