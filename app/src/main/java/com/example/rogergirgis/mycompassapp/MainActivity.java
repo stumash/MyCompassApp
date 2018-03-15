@@ -38,6 +38,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private long timeSinceLastUpdate = 0L;
     private long timeSinceStart = 0L;
 
+    private String baseDir = android.os.Environment.getExternalStorageDirectory().getAbsolutePath();
+    private String fileName = "AnalysisData.csv";
+    private String filePath;
+
 
 
 
@@ -117,6 +121,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             yOrientationText.setText("Y: " + yOrientationDeg);
             zOrientationText.setText("Z: " + zOrientationDeg);
         }
+        //Record orientation co-ords 5 times a second, in order to properly test against captured video
         if ((timeSinceLastUpdate < 200) && mLastAccelerometerSet && mLastMagnetometerSet) {
             SensorManager.getRotationMatrix(mR, null, mLastAccelerometer, mLastMagnetometer);
             SensorManager.getOrientation(mR, mOrientation);
@@ -126,9 +131,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             String xOrientationDeg = String.valueOf(convertToDegrees(mOrientation[0]));
             String yOrientationDeg = String.valueOf(convertToDegrees(mOrientation[1]));
             String zOrientationDeg = String.valueOf(convertToDegrees(mOrientation[2]));
-
+            //save records of orientation, along with timestamp, to a csv file
             try {
-                FileWriter fw = new FileWriter("...",true);
+                filePath = baseDir + File.separator + fileName;
+                FileWriter fw = new FileWriter(filePath,true);
                 fw.append(String.valueOf(timeSinceStart));
                 fw.append(",");
                 fw.append(xOrientationDeg);
