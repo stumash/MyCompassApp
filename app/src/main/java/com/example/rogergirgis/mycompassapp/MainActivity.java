@@ -27,11 +27,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float[] mOrientation = new float[3];
     private float mCurrentDegree = 0f;
 
-    /**
-     *  ;asldkjfj;asdflk;asd f
-     *
-     *
-     */
     // https://developer.android.com/reference/android/hardware/SensorManager.html#getOrientation(float[],%20float[])
     // https://www.youtube.com/watch?v=nOQxq2YpEjQ
 
