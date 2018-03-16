@@ -5,6 +5,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.view.WindowManager;
 import android.widget.TextView;
@@ -41,7 +42,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private long timeSinceStart = 0L;
 
     private Context context;
-    private File path;
+    private String path;
+    private String directory;
     private String csv;
     private File file;
     private FileWriter file_writer;
@@ -77,9 +79,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
         context = getApplicationContext();
-        path = context.getFilesDir();
         csv = "AnalysisData.csv";
-        file = new File(context.getFilesDir(), csv);
+        directory = Environment.getExternalStorageDirectory().getPath();
+        path = directory + File.separator + csv;
+        file = new File(path);
         try {
             file_writer = new FileWriter(file, false);
         }
