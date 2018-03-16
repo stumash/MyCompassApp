@@ -95,7 +95,7 @@ public class MainActivity
 
         context = getApplicationContext();
         csv = "AnalysisData.csv";
-        directory = Environment.getExternalStorageDirectory().getPath();
+        directory = Environment.getExternalStorageDirectory().getAbsolutePath();
         path = directory + File.separator + csv;
         file = new File(path);
         try {
