@@ -40,11 +40,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private long timeSinceLastUpdate = 0L;
     private long timeSinceStart = 0L;
 
-    private String baseDir = android.os.Environment.getExternalStorageDirectory().getAbsolutePath();
-    private String filePath;
-
-
-
+    private Context context;
+    private File path;
+    private String csv;
+    private File file;
 
     /**
      *  ;asldkjfj;asdflk;asd f
@@ -75,6 +74,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
         mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+
+        context = getApplicationContext();
+        path = context.getFilesDir();
+        csv = "AnalysisData.csv";
+        file = new File(context.getFilesDir(), csv);
     }
 
     protected void onResume() {
@@ -148,17 +152,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     }
     public void writeToCsv(String t, String x, String y, String z) throws IOException {
-
-        File path = android.os.Environment.getDataDirectory();
-        Context context = getApplicationContext();
-        String csv = "AnalysisData.csv";
-        File file = new File(context.getFilesDir(), csv);
         boolean success = true;
         if (!path.exists()) {
             success = path.mkdir();
         }
         if (success) {
-            FileWriter file_writer = new FileWriter(csv, true);
+            FileWriter file_writer = new FileWriter(csv);
             String s = t + "," + x + "," + y + "," + z + "\n";
             file_writer.append(s);
             file_writer.close();
