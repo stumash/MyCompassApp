@@ -54,11 +54,6 @@ public class MainActivity
     private File file;
     private FileWriter file_writer;
 
-    /**
-     *  ;asldkjfj;asdflk;asd f
-     *
-     *
-     */
     // https://developer.android.com/reference/android/hardware/SensorManager.html#getOrientation(float[],%20float[])
     // https://www.youtube.com/watch?v=nOQxq2YpEjQ
 
