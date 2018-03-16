@@ -8,11 +8,13 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.WindowManager;
 import android.widget.TextView;
+import android.content.Context;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
@@ -39,7 +41,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private long timeSinceStart = 0L;
 
     private String baseDir = android.os.Environment.getExternalStorageDirectory().getAbsolutePath();
-    private String fileName = "AnalysisData.csv";
     private String filePath;
 
 
@@ -122,7 +123,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             zOrientationText.setText("Z: " + zOrientationDeg);
         }
         //Record orientation co-ords 5 times a second, in order to properly test against captured video
-        if ((timeSinceLastUpdate < 200) && mLastAccelerometerSet && mLastMagnetometerSet) {
+        if ((timeSinceLastUpdate > 200) && mLastAccelerometerSet && mLastMagnetometerSet) {
             SensorManager.getRotationMatrix(mR, null, mLastAccelerometer, mLastMagnetometer);
             SensorManager.getOrientation(mR, mOrientation);
             timeOfLastUpdate = currTime;
@@ -133,18 +134,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             String zOrientationDeg = String.valueOf(convertToDegrees(mOrientation[2]));
             //save records of orientation, along with timestamp, to a csv file
             try {
-                filePath = baseDir + File.separator + fileName;
-                FileWriter fw = new FileWriter(filePath,true);
-                fw.append(String.valueOf(timeSinceStart));
-                fw.append(",");
-                fw.append(xOrientationDeg);
-                fw.append(",");
-                fw.append(yOrientationDeg);
-                fw.append(",");
-                fw.append(zOrientationDeg);
-                fw.append("\n");
-                fw.close();
-                fw.flush();
+
+                String time = String.valueOf(timeSinceStart);
+                writeToCsv(time, xOrientationDeg, yOrientationDeg, zOrientationDeg);
             }
             catch(IOException e){
                 e.printStackTrace();
@@ -154,6 +146,24 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         }
 
+    }
+    public void writeToCsv(String t, String x, String y, String z) throws IOException {
+
+        File path = android.os.Environment.getDataDirectory();
+        Context context = getApplicationContext();
+        String csv = "AnalysisData.csv";
+        File file = new File(context.getFilesDir(), csv);
+        boolean success = true;
+        if (!path.exists()) {
+            success = path.mkdir();
+        }
+        if (success) {
+            FileWriter file_writer = new FileWriter(csv, true);
+            String s = t + "," + x + "," + y + "," + z + "\n";
+            file_writer.append(s);
+            file_writer.close();
+
+        }
     }
 
     public float convertToDegrees(float rad) {
