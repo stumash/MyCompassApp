@@ -1,11 +1,15 @@
 package com.example.rogergirgis.mycompassapp;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.WindowManager;
 import android.widget.TextView;
@@ -17,7 +21,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
+public class MainActivity
+        extends AppCompatActivity
+        implements SensorEventListener, ActivityCompat.OnRequestPermissionsResultCallback {
 
     private TextView xAccelText, yAccelText, zAccelText;
     private TextView xMagnText, yMagnText, zMagnText;
@@ -78,6 +84,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
+
+        // get permissions to write to external storage if not already granted by user
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    1010);
+        }
+
         context = getApplicationContext();
         csv = "AnalysisData.csv";
         directory = Environment.getExternalStorageDirectory().getPath();
@@ -89,7 +104,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         catch (IOException e){
             e.printStackTrace();
         }
+    }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[],
+                                           int[] grantResults) {
+        switch (requestCode) {
+            case 1010: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                }
+            }
+        }
     }
 
     protected void onResume() {
@@ -173,7 +201,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             try {
                 file_writer.append(s);
                 file_writer.flush();
-            } catch(Exception e) {e.printStackTrace();}
+            } catch(Exception e) {
+                e.printStackTrace();
+                e.printStackTrace();
+            }
 
         }
      }
