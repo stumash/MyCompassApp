@@ -44,6 +44,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private File path;
     private String csv;
     private File file;
+    private FileWriter file_writer;
 
     /**
      *  ;asldkjfj;asdflk;asd f
@@ -79,6 +80,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         path = context.getFilesDir();
         csv = "AnalysisData.csv";
         file = new File(context.getFilesDir(), csv);
+
+        try {
+            file_writer = new FileWriter(file);
+        } catch(Exception e) {e.printStackTrace();}
     }
 
     protected void onResume() {
@@ -91,6 +96,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onPause();
         mSensorManager.unregisterListener(this, mAccelerometer);
         mSensorManager.unregisterListener(this, mMagnetometer);
+
+        try { file_writer.close();
+        } catch(Exception e) {e.printStackTrace();}
     }
 
     @Override
@@ -153,17 +161,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
     public void writeToCsv(String t, String x, String y, String z) throws IOException {
         boolean success = true;
-        if (!path.exists()) {
-            success = path.mkdir();
-        }
         if (success) {
-            FileWriter file_writer = new FileWriter(csv);
             String s = t + "," + x + "," + y + "," + z + "\n";
             file_writer.append(s);
-            file_writer.close();
-
         }
-    }
+ db    }
 
     public float convertToDegrees(float rad) {
         float deg = (float) (Math.toDegrees(rad) + 360) % 360;
