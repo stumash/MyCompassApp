@@ -47,6 +47,10 @@ public class MainActivity
     private long timeSinceLastUpdate = 0L;
     private long timeSinceStart = 0L;
 
+    private String xAccel;
+    private String yAccel;
+    private String zAccel;
+
     private Context context;
     private String path;
     private String directory;
@@ -165,20 +169,20 @@ public class MainActivity
             zOrientationText.setText("Z: " + zOrientationDeg);
         }
         //Record orientation co-ords 5 times a second, in order to properly test against captured video
-        if ((timeSinceLastUpdate > 200) && mLastAccelerometerSet && mLastMagnetometerSet) {
+        if ((timeSinceLastUpdate > 200) && (sensorEvent.sensor == mAccelerometer)) {
             SensorManager.getRotationMatrix(mR, null, mLastAccelerometer, mLastMagnetometer);
             SensorManager.getOrientation(mR, mOrientation);
             timeOfLastUpdate = currTime;
 
 
-            String xOrientationDeg = String.valueOf(convertToDegrees(mOrientation[0]));
-            String yOrientationDeg = String.valueOf(convertToDegrees(mOrientation[1]));
-            String zOrientationDeg = String.valueOf(convertToDegrees(mOrientation[2]));
+            xAccel = String.valueOf(sensorEvent.values[0]);
+            yAccel = String.valueOf(sensorEvent.values[1]);
+            zAccel = String.valueOf(sensorEvent.values[2]);
             //save records of orientation, along with timestamp, to a csv file
             try {
 
                 String time = String.valueOf(timeSinceStart);
-                writeToCsv(time, xOrientationDeg, yOrientationDeg, zOrientationDeg);
+                writeToCsv(time, xAccel, yAccel, zAccel);
             }
             catch(IOException e){
                 e.printStackTrace();
