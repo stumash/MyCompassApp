@@ -169,7 +169,7 @@ public class MainActivity
             zOrientationText.setText("Z: " + zOrientationDeg);
         }
         //Record orientation co-ords 5 times a second, in order to properly test against captured video
-        if ((timeSinceLastUpdate > 200) && (sensorEvent.sensor == mAccelerometer)) {
+        if ((timeSinceLastUpdate > 50) && (sensorEvent.sensor == mAccelerometer)) {
             SensorManager.getRotationMatrix(mR, null, mLastAccelerometer, mLastMagnetometer);
             SensorManager.getOrientation(mR, mOrientation);
             timeOfLastUpdate = currTime;
