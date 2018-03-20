@@ -1,15 +1,29 @@
 package com.example.rogergirgis.mycompassapp;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.WindowManager;
 import android.widget.TextView;
+import android.content.Context;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
+
+public class MainActivity
+        extends AppCompatActivity
+        implements SensorEventListener, ActivityCompat.OnRequestPermissionsResultCallback {
 
     private TextView xAccelText, yAccelText, zAccelText;
     private TextView xMagnText, yMagnText, zMagnText;
@@ -27,11 +41,23 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float[] mOrientation = new float[3];
     private float mCurrentDegree = 0f;
 
-    /**
-     *  ;asldkjfj;asdflk;asd f
-     *
-     *
-     */
+    private long startTime = System.currentTimeMillis();
+    private long currTime = System.currentTimeMillis();
+    private long timeOfLastUpdate = 0L;
+    private long timeSinceLastUpdate = 0L;
+    private long timeSinceStart = 0L;
+
+    private String xAccel;
+    private String yAccel;
+    private String zAccel;
+
+    private Context context;
+    private String path;
+    private String directory;
+    private String csv;
+    private File file;
+    private FileWriter file_writer;
+
     // https://developer.android.com/reference/android/hardware/SensorManager.html#getOrientation(float[],%20float[])
     // https://www.youtube.com/watch?v=nOQxq2YpEjQ
 
@@ -56,22 +82,65 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
         mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+
+
+        // get permissions to write to external storage if not already granted by user
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    1010);
+        }
+
+        context = getApplicationContext();
+        csv = "AnalysisData.csv";
+        directory = Environment.getExternalStorageDirectory().getAbsolutePath();
+        path = directory + File.separator + csv;
+        file = new File(path);
+        try {
+            file_writer = new FileWriter(file, false);
+        }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[],
+                                           int[] grantResults) {
+        switch (requestCode) {
+            case 1010: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                }
+            }
+        }
     }
 
     protected void onResume() {
         super.onResume();
-        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_GAME);
-        mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_GAME);
+        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
+        mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_UI);
     }
 
     protected void onPause() {
         super.onPause();
         mSensorManager.unregisterListener(this, mAccelerometer);
         mSensorManager.unregisterListener(this, mMagnetometer);
+        try {
+            file_writer.close();
+        } catch(Exception e) {e.printStackTrace();}
+
     }
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
+        currTime = System.currentTimeMillis();
+        timeSinceStart = currTime - startTime;
+        timeSinceLastUpdate = currTime - timeOfLastUpdate;
+
         if (sensorEvent.sensor == mAccelerometer) {
             xAccelText.setText("X:" + sensorEvent.values[0]);
             yAccelText.setText("Y:" + sensorEvent.values[1]);
@@ -99,7 +168,45 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             yOrientationText.setText("Y: " + yOrientationDeg);
             zOrientationText.setText("Z: " + zOrientationDeg);
         }
+        //Record orientation co-ords 5 times a second, in order to properly test against captured video
+        if ((timeSinceLastUpdate > 50) && (sensorEvent.sensor == mAccelerometer)) {
+            SensorManager.getRotationMatrix(mR, null, mLastAccelerometer, mLastMagnetometer);
+            SensorManager.getOrientation(mR, mOrientation);
+            timeOfLastUpdate = currTime;
+
+
+            xAccel = String.valueOf(sensorEvent.values[0]);
+            yAccel = String.valueOf(sensorEvent.values[1]);
+            zAccel = String.valueOf(sensorEvent.values[2]);
+            //save records of orientation, along with timestamp, to a csv file
+            try {
+
+                String time = String.valueOf(timeSinceStart);
+                writeToCsv(time, xAccel, yAccel, zAccel);
+            }
+            catch(IOException e){
+                e.printStackTrace();
+            }
+
+
+
+        }
+
     }
+    public void writeToCsv(String t, String x, String y, String z) throws IOException {
+        boolean success = true;
+        if (success) {
+            String s = t + "," + x + "," + y + "," + z + "\n";
+            try {
+                file_writer.append(s);
+                file_writer.flush();
+            } catch(Exception e) {
+                e.printStackTrace();
+                e.printStackTrace();
+            }
+
+        }
+     }
 
     public float convertToDegrees(float rad) {
         float deg = (float) (Math.toDegrees(rad) + 360) % 360;

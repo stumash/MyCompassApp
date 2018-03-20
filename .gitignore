@@ -1,3 +1,4 @@
+# generated files
 *.iml
 .gradle
 local.properties
@@ -7,4 +8,8 @@ local.properties
 /captures
 .externalNativeBuild
 
+# for analysis of data recorded from
+# sensors and other media devices
 collected_data
+mock_presentation/**/*.png
+mock_presentation/**/*.csv
