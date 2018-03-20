@@ -1,19 +1,24 @@
 package com.example.rogergirgis.mycompassapp;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.WindowManager;
 import android.widget.TextView;
 import android.content.Context;
+import android.widget.VideoView;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -24,6 +29,13 @@ import java.util.ArrayList;
 public class MainActivity
         extends AppCompatActivity
         implements SensorEventListener, ActivityCompat.OnRequestPermissionsResultCallback {
+
+    private boolean videoStartedRecording = false;
+    private final int REQUEST_VIDEO_CAPTURE = 1;
+    private VideoView mVideoView;
+    private Uri videoUri;
+    private File videoFile;
+    private final String videoFilename = "AnalysisData.vid";
 
     private TextView xAccelText, yAccelText, zAccelText;
     private TextView xMagnText, yMagnText, zMagnText;
@@ -67,17 +79,11 @@ public class MainActivity
         setContentView(R.layout.activity_main);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        mVideoView = findViewById(R.id.videoView);
+
         xAccelText = findViewById(R.id.xAccelTV);
         yAccelText = findViewById(R.id.yAccelTV);
         zAccelText = findViewById(R.id.zAccelTV);
-
-        xMagnText = findViewById(R.id.xMagnTV);
-        yMagnText = findViewById(R.id.yMagnTV);
-        zMagnText = findViewById(R.id.zMagnTV);
-
-        xOrientationText = findViewById(R.id.xOrientationTV);
-        yOrientationText = findViewById(R.id.yOrientationTV);
-        zOrientationText = findViewById(R.id.zOrientationTV);
 
         mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
         mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -103,6 +109,9 @@ public class MainActivity
         catch (IOException e){
             e.printStackTrace();
         }
+
+        // dispatch Intent to start recording video
+        dispatchTakeVideoIntent();
     }
 
     @Override
@@ -121,8 +130,8 @@ public class MainActivity
 
     protected void onResume() {
         super.onResume();
-        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
-        mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_UI);
+        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_GAME);
+        mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_GAME);
     }
 
     protected void onPause() {
@@ -137,6 +146,8 @@ public class MainActivity
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
+        if (!videoStartedRecording) return;
+
         currTime = System.currentTimeMillis();
         timeSinceStart = currTime - startTime;
         timeSinceLastUpdate = currTime - timeOfLastUpdate;
@@ -193,6 +204,7 @@ public class MainActivity
         }
 
     }
+
     public void writeToCsv(String t, String x, String y, String z) throws IOException {
         boolean success = true;
         if (success) {
@@ -207,6 +219,25 @@ public class MainActivity
 
         }
      }
+
+    private void dispatchTakeVideoIntent() {
+        Intent takeVideoIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
+        videoFile = new File(directory + File.separator + videoFilename);
+        videoUri = Uri.fromFile(videoFile);
+        takeVideoIntent.putExtra(MediaStore.EXTRA_OUTPUT, videoUri);
+        if (takeVideoIntent.resolveActivity(getPackageManager()) != null) {
+            startActivityForResult(takeVideoIntent, REQUEST_VIDEO_CAPTURE);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        if (requestCode == REQUEST_VIDEO_CAPTURE && resultCode == RESULT_OK) {
+            Uri videoUri = intent.getData();
+            mVideoView.setVideoURI(videoUri);
+            videoStartedRecording = true;
+        }
+    }
 
     public float convertToDegrees(float rad) {
         float deg = (float) (Math.toDegrees(rad) + 360) % 360;
