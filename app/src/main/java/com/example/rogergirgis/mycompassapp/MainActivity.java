@@ -2,6 +2,7 @@ package com.example.rogergirgis.mycompassapp;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -14,6 +15,7 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.ImageReader;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -33,6 +35,8 @@ import android.content.Context;
 import android.widget.Toast;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -40,6 +44,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+
+// sensor tutorial:
+// https://developer.android.com/reference/android/hardware/SensorManager.html#getOrientation(float[],%20float[])
+// https://www.youtube.com/watch?v=nOQxq2YpEjQ
+
+// camera tutorial:
+// https://www.youtube.com/watch?v=CuvVpsFc77w&t=2s
 
 public class MainActivity
         extends AppCompatActivity
@@ -75,17 +86,20 @@ public class MainActivity
     private File file;
     private FileWriter file_writer;
 
-    private long startTime = System.currentTimeMillis();
-    private long currTime = System.currentTimeMillis();
-    private long timeOfLastUpdate = 0L;
-    private long timeSinceLastUpdate = 0L;
-    private long timeSinceStart = 0L;
+    private volatile long startTime = System.currentTimeMillis();
+    private volatile long currTime = System.currentTimeMillis();
+    private volatile long timeOfLastUpdate = 0L;
+    private volatile long timeSinceLastUpdate = 0L;
+    private volatile long timeSinceStart = 0L;
 
     // all variables related to camera viewing and saving
     //====================================================
+    private File mPictureFolder;
     private CameraDevice mCameraDevice;
     private String mCameraId;
     private Size mPreviewSize;
+    private ImageReader mSurfaceReader;
+    private ImageReader.OnImageAvailableListener mOnImageAvailableListener;
     private CaptureRequest.Builder mCaptureRequestBuilder;
     private CameraDevice.StateCallback mCameraDeviceStateCallback = new CameraDevice.StateCallback() {
         @Override
@@ -138,6 +152,8 @@ public class MainActivity
     Surface mPreviewSurface;
     private HandlerThread mHandlerThread;
     private Handler mHandler;
+    private Handler mImageHandler;
+    private HandlerThread mImageHandlerThread;
     private static SparseIntArray ORIENTATIONS = new SparseIntArray();
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 0);
@@ -145,7 +161,6 @@ public class MainActivity
         ORIENTATIONS.append(Surface.ROTATION_180, 180);
         ORIENTATIONS.append(Surface.ROTATION_270, 270);
     }
-
     private static class CompareSizeByArea implements Comparator<Size> {
         @Override
         public int compare(Size lhs, Size rhs) {
@@ -153,8 +168,9 @@ public class MainActivity
         }
     }
 
-    // https://developer.android.com/reference/android/hardware/SensorManager.html#getOrientation(float[],%20float[])
-    // https://www.youtube.com/watch?v=nOQxq2YpEjQ
+
+    // METHODS
+    //====================
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -200,6 +216,8 @@ public class MainActivity
             e.printStackTrace();
         }
 
+        createPictureFolder();
+
         mTextureView = (TextureView) findViewById(R.id.textureView);
     }
 
@@ -227,6 +245,7 @@ public class MainActivity
         mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_UI);
 
         startBackgroundThread();
+        startImageBackgroundThread();
 
         if (mTextureView.isAvailable()) {
             setupCamera(mTextureView.getWidth(), mTextureView.getHeight());
@@ -250,6 +269,7 @@ public class MainActivity
         closeCamera();
 
         stopBackgroundThread();
+        stopImageBackgroundThread();
     }
 
     @Override
@@ -379,7 +399,7 @@ public class MainActivity
     private void startPreview() {
         SurfaceTexture surfaceTexture = mTextureView.getSurfaceTexture();
         surfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
-        Surface mPreviewSurface = new Surface(surfaceTexture);
+        mPreviewSurface = new Surface(surfaceTexture);
 
         try {
             mCaptureRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
@@ -397,6 +417,8 @@ public class MainActivity
                                     mHandler
                             );
                         } catch (CameraAccessException e) { e.printStackTrace(); }
+
+                        mSurfaceReader = new ImageReader();
                     }
 
                     @Override
@@ -426,6 +448,22 @@ public class MainActivity
 
     }
 
+    private void startImageBackgroundThread() {
+        mImageHandlerThread = new HandlerThread("ImageWriterThread");
+        mImageHandlerThread.start();
+        mImageHandler = new Handler(mHandlerThread.getLooper());
+    }
+
+    private void stopImageBackgroundThread() {
+        mImageHandlerThread.quitSafely();
+        try {
+            mImageHandlerThread.join();
+            mImageHandlerThread = null;
+            mImageHandler = null;
+        }
+        catch (InterruptedException e) { e.printStackTrace(); }
+    }
+
     private static int sensorToDeviceRotation(CameraCharacteristics cameraCharacteristics, int deviceOrientation) {
         int sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         deviceOrientation = ORIENTATIONS.get(deviceOrientation);
@@ -447,6 +485,36 @@ public class MainActivity
         }
         else {
             return choices[0]; // default
+        }
+    }
+
+    private void createPictureFolder() {
+        mPictureFolder = new File(directory, "pictureFolder");
+        if (!mPictureFolder.exists()) {
+            mPictureFolder.mkdirs();
+        }
+    }
+
+    private void prepareImageReader(Size sz, int format) throws Exception {
+        int width = sz.getWidth();
+        int height = sz.getHeight();
+        ImageFormat.
+        mSurfaceReader = ImageReader.newInstance(width, height, format, 2000);
+        mOnImageAvailableListener = new ImageListenerWriter();
+        mSurfaceReader.setOnImageAvailableListener(mOnImageAvailableListener, );
+    }
+
+    private class ImageListenerWriter implements ImageReader.OnImageAvailableListener {
+        @Override
+        public void onImageAvailable(ImageReader imageReader) {
+            long timeStamp = System.currentTimeMillis() - startTime;
+            File imageFile = new File(mPictureFolder, String.valueOf(timeStamp)+".png");
+            try {
+                FileOutputStream fileOutputStream = new FileOutputStream(imageFile);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+            // TODO
         }
     }
 }
