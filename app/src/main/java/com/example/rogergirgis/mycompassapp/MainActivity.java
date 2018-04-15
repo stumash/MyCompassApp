@@ -2,7 +2,6 @@ package com.example.rogergirgis.mycompassapp;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -15,7 +14,6 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
-import android.media.ImageReader;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -95,21 +93,16 @@ public class MainActivity
     // all variables related to camera viewing and saving
     //====================================================
     private File mPictureFolder;
+
     private CameraDevice mCameraDevice;
     private String mCameraId;
     private Size mPreviewSize;
-    private ImageReader mSurfaceReader;
-    private ImageReader.OnImageAvailableListener mOnImageAvailableListener;
     private CaptureRequest.Builder mCaptureRequestBuilder;
+    private static final int MY_REQUEST_CAMERA_PERMISSION_CODE = 0;
     private CameraDevice.StateCallback mCameraDeviceStateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(@NonNull CameraDevice cameraDevice) {
             mCameraDevice = cameraDevice;
-//            Toast.makeText(
-//                getApplicationContext(),
-//                "Camera Connected",
-//                Toast.LENGTH_SHORT
-//            ).show();
             startPreview();
         }
 
@@ -125,8 +118,8 @@ public class MainActivity
             cameraDevice = null;
         }
     };
+
     private TextureView mTextureView;
-    private static final int MY_REQUEST_CAMERA_PERMISSION_CODE = 0;
     private TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int width, int height) {
@@ -146,14 +139,12 @@ public class MainActivity
 
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surfaceTexture) {
-
         }
     };
+    SurfaceTexture mSurfaceTexture;
     Surface mPreviewSurface;
     private HandlerThread mHandlerThread;
     private Handler mHandler;
-    private Handler mImageHandler;
-    private HandlerThread mImageHandlerThread;
     private static SparseIntArray ORIENTATIONS = new SparseIntArray();
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 0);
@@ -245,7 +236,6 @@ public class MainActivity
         mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_UI);
 
         startBackgroundThread();
-        startImageBackgroundThread();
 
         if (mTextureView.isAvailable()) {
             setupCamera(mTextureView.getWidth(), mTextureView.getHeight());
@@ -269,7 +259,6 @@ public class MainActivity
         closeCamera();
 
         stopBackgroundThread();
-        stopImageBackgroundThread();
     }
 
     @Override
@@ -397,9 +386,10 @@ public class MainActivity
     }
 
     private void startPreview() {
-        SurfaceTexture surfaceTexture = mTextureView.getSurfaceTexture();
-        surfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
-        mPreviewSurface = new Surface(surfaceTexture);
+        // get preview surface to capture output of camera data request
+        mSurfaceTexture = mTextureView.getSurfaceTexture();
+        mSurfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+        mPreviewSurface = new Surface(mSurfaceTexture);
 
         try {
             mCaptureRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
@@ -417,8 +407,6 @@ public class MainActivity
                                     mHandler
                             );
                         } catch (CameraAccessException e) { e.printStackTrace(); }
-
-                        mSurfaceReader = new ImageReader();
                     }
 
                     @Override
@@ -436,30 +424,12 @@ public class MainActivity
         mHandlerThread.start();
         mHandler = new Handler(mHandlerThread.getLooper());
     }
-
     private void stopBackgroundThread() {
         mHandlerThread.quitSafely();
         try {
             mHandlerThread.join();
             mHandlerThread = null;
             mHandler = null;
-        }
-        catch (InterruptedException e) { e.printStackTrace(); }
-
-    }
-
-    private void startImageBackgroundThread() {
-        mImageHandlerThread = new HandlerThread("ImageWriterThread");
-        mImageHandlerThread.start();
-        mImageHandler = new Handler(mHandlerThread.getLooper());
-    }
-
-    private void stopImageBackgroundThread() {
-        mImageHandlerThread.quitSafely();
-        try {
-            mImageHandlerThread.join();
-            mImageHandlerThread = null;
-            mImageHandler = null;
         }
         catch (InterruptedException e) { e.printStackTrace(); }
     }
@@ -492,29 +462,6 @@ public class MainActivity
         mPictureFolder = new File(directory, "pictureFolder");
         if (!mPictureFolder.exists()) {
             mPictureFolder.mkdirs();
-        }
-    }
-
-    private void prepareImageReader(Size sz, int format) throws Exception {
-        int width = sz.getWidth();
-        int height = sz.getHeight();
-        ImageFormat.
-        mSurfaceReader = ImageReader.newInstance(width, height, format, 2000);
-        mOnImageAvailableListener = new ImageListenerWriter();
-        mSurfaceReader.setOnImageAvailableListener(mOnImageAvailableListener, );
-    }
-
-    private class ImageListenerWriter implements ImageReader.OnImageAvailableListener {
-        @Override
-        public void onImageAvailable(ImageReader imageReader) {
-            long timeStamp = System.currentTimeMillis() - startTime;
-            File imageFile = new File(mPictureFolder, String.valueOf(timeStamp)+".png");
-            try {
-                FileOutputStream fileOutputStream = new FileOutputStream(imageFile);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-            // TODO
         }
     }
 }
